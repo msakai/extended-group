@@ -132,6 +132,13 @@ module Utils where
     1#
     ∎
 
+  -0≈0 : - 0# ≈ 0#
+  -0≈0 = begin
+    - 0#     ≈⟨ sym (+-identityˡ (- 0#)) ⟩
+    0# - 0#  ≈⟨ -‿inverseʳ _ ⟩
+    0#
+    ∎
+
   x≈y⇒x-y≈0 : ∀ {x y} → x ≈ y → x - y ≈ 0#
   x≈y⇒x-y≈0 {x} {y} x≈y = begin
     x - y      ≈⟨ +-cong x≈y refl ⟩
@@ -148,6 +155,64 @@ module Utils where
     0# + y         ≈⟨ +-identityˡ y ⟩
     y
     ∎
+
+  x+y≈1∧xy≈1⇒x²-x+1≈0 : ∀ {x y} → (x + y ≈ 1#) × (x * y ≈ 1#) → (x * x - x + 1# ≈ 0#)
+  x+y≈1∧xy≈1⇒x²-x+1≈0 {x} {y} (x+y≈1 , x*y≈1) = begin
+    x * x - x + 1#                               ≈⟨ +-cong (+-cong (sym (*-identityˡ (x * x))) (sym (-1*x≈-x x))) refl ⟩
+    1# * (x * x) + (- 1#) * x + 1#               ≈⟨ +-cong (+-cong (*-cong (sym -1*-1≈1) refl) refl) refl ⟩
+    (- 1#) * (- 1#) * (x * x) + (- 1#) * x + 1#  ≈⟨  solve 2 (λ x m → m :* m :* (x :* x) :+ m :* x :+ con 1 := m :* ((con 1 :+ m :* x) :* x) :+ con 1) refl x (- 1#) ⟩
+    (- 1#) * ((1# + (- 1#) * x) * x) + 1#        ≈⟨ +-cong (*-cong refl (*-cong (+-cong refl (-1*x≈-x x)) refl)) refl ⟩
+    (- 1#) * ((1# - x) * x) + 1#                 ≈⟨ +-cong (-1*x≈-x _) refl ⟩
+    - ((1# - x) * x) + 1#                        ≈⟨ +-cong (-‿cong (*-cong (sym y≈1-x) refl)) refl ⟩
+    - (y * x) + 1#                               ≈⟨ +-cong (-‿cong (*-comm y x)) refl ⟩
+    - (x * y) + 1#                               ≈⟨ +-cong (-‿cong x*y≈1) refl ⟩
+    - 1# + 1#                                    ≈⟨ -‿inverseˡ 1# ⟩
+    0#
+    ∎
+    where
+      open Solver
+
+      y≈1-x : y ≈ 1# - x
+      y≈1-x = begin
+        y            ≈⟨ sym (+-identityʳ _) ⟩
+        y + 0#       ≈⟨ +-cong refl (sym (-‿inverseʳ x)) ⟩
+        y + (x - x)  ≈⟨ sym (+-assoc _ _ _) ⟩
+        (y + x) - x  ≈⟨ +-cong (+-comm y x) refl ⟩
+        (x + y) - x  ≈⟨ +-cong x+y≈1 refl ⟩
+        1# - x
+        ∎
+
+  x²-x+1≈0⇒x+y≈1∧xy≈1 : ∀ {x} → (x * x - x + 1# ≈ 0#) → ∃[ y ] ((x + y ≈ 1#) × (x * y ≈ 1#))
+  x²-x+1≈0⇒x+y≈1∧xy≈1 {x} x²-x+1≈0 = (y , (x+y≈1 , x*y≈1))
+    where
+      open Solver
+
+      y = 1# - x
+
+      x+y≈1 : x + y ≈ 1#
+      x+y≈1 = begin
+        x + y           ≈⟨ refl ⟩
+        x + (1# - x)    ≈⟨ +-cong refl (+-comm _ _) ⟩
+        x + (- x + 1#)  ≈⟨ sym (+-assoc _ _ _) ⟩
+        (x - x) + 1#    ≈⟨ +-cong (-‿inverseʳ _) refl ⟩
+        0# + 1#         ≈⟨ +-identityˡ 1# ⟩
+        1#
+        ∎
+
+      x*y-1≈0 : x * y - 1# ≈ 0#
+      x*y-1≈0 = begin
+        x * y - 1#                               ≈⟨ refl ⟩
+        x * (1# - x) - 1#                        ≈⟨ +-cong (*-cong refl (+-cong (sym -1*-1≈1) (sym (-1*x≈-x x)))) refl  ⟩
+        x * ((- 1#) * (- 1#) + (- 1#) * x) - 1#  ≈⟨ solve 2 (\x m → x :* (m :* m :+ m :* x) :+ m := m :* (x :* x :+ m :* x :+ con 1)) refl x (- 1#) ⟩
+        (- 1#) * (x * x + (- 1#) * x + 1#)       ≈⟨ *-cong refl (+-cong (+-cong (refl {x * x}) (-1*x≈-x x)) refl) ⟩
+        (- 1#) * (x * x - x + 1#)                ≈⟨ -1*x≈-x _ ⟩
+        - (x * x - x + 1#)                       ≈⟨ -‿cong x²-x+1≈0 ⟩
+        - 0#                                     ≈⟨ -0≈0 ⟩
+        0#
+        ∎
+
+      x*y≈1 : x * y ≈ 1#
+      x*y≈1 = x-y≈0⇒x≈y x*y-1≈0
 
   -- 後で定義する _⊛_ の「発散しない場合」の定義
   -- func x y = (xy - 1) / (x + y - 1)
