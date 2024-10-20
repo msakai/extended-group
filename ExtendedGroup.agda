@@ -10,8 +10,8 @@ x ⊛ y = ∞                        otherwise
 
 Checked with Agda version 2.7.0.1 and agda-stdlib-2.1.1
 
-参考: https://x.com/MurakamiMath/status/1837434653634187342
-* 
+参考:
+* https://x.com/MurakamiMath/status/1837434653634187342
 -}
 
 open import Algebra.Apartness.Bundles using (HeytingField)
