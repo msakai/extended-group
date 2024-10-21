@@ -533,41 +533,13 @@ module Utils where
   lemma-3 x y z x+y#1 x⊛y+z≈1 =
     begin
       x * y + x * z + y * z - x - y - z
-    ≈⟨ sym (+-identityʳ _) ⟩
-      x * y + x * z + y * z - x - y - z + 0#
-    ≈⟨ +-cong refl (sym (-‿inverseʳ 1#)) ⟩
-      x * y + x * z + y * z - x - y - z + (1# - 1#)
-    ≈⟨ +-cong (+-cong (+-cong (+-cong refl (sym (-1*x≈-x _))) (sym (-1*x≈-x _))) (sym (-1*x≈-x _))) (+-cong (sym -1*-1≈1) refl) ⟩
-      x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + ((- 1#) * (- 1#) + (- 1#))
-    ≈⟨ solve 4 (λ x y z m →
-                 x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z :+ (m :* m :+ m)
-                 :=
-                 (x :* y :+ m) :* con 1 :+ z :* (x :+ y :+ m) :+ m :* (x :+ y :+ m)
-               ) refl x y z (- 1#) ⟩
-     (x * y - 1#) * 1# + z * (x + y - 1#) + (- 1#) * (x + y - 1#)
-    ≈⟨ +-cong refl (-1*x≈-x ((x + y - 1#))) ⟩
-      (x * y - 1#) * 1# + z * (x + y - 1#) - (x + y - 1#)
-    ≈⟨ x≈y⇒x-y≈0 lem1 ⟩
+    ≈⟨ sym ([x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z) ⟩
+      (func x y x+y#1 + z - 1#) * (x + y - 1#)
+    ≈⟨ *-cong (x≈y⇒x-y≈0 x⊛y+z≈1) refl ⟩
+      0# * (x + y - 1#)
+    ≈⟨ zeroˡ _ ⟩
       0#
     ∎
-    where
-      open Solver
-
-      lem1 : (x * y - 1#) * 1# + z * (x + y - 1#) ≈ x + y - 1#
-      lem1 =
-        begin
-          (x * y - 1#) * 1# + z * (x + y - 1#)
-        ≈⟨ +-cong (*-cong refl (sym (proj₁ (proj₂ (#⇒invertible x+y#1))))) refl ⟩
-          (x * y - 1#) * (proj₁ (#⇒invertible x+y#1) * (x + y - 1#)) + z * (x + y - 1#)
-        ≈⟨ solve 4 (λ z p s s⁻¹ → p :* (s⁻¹ :* s) :+ z :* s := (p :* s⁻¹ :+ z) :* s) refl z (x * y - 1#) (x + y - 1#) (proj₁ (#⇒invertible x+y#1)) ⟩
-          ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z) * (x + y - 1#)
-        ≈⟨ refl ⟩
-          (func x y x+y#1 + z) * (x + y - 1#)
-        ≈⟨ *-cong x⊛y+z≈1 refl ⟩
-          1# * (x + y - 1#)
-        ≈⟨ *-identityˡ _ ⟩
-          x + y - 1#
-        ∎
 
   lemma-3'
     : ∀ x y z → (y+z#1 : y + z # 1#)
@@ -576,106 +548,55 @@ module Utils where
   lemma-3' x y z y+z#1 x+y⊛z≈1 =
     begin
       x * y + x * z + y * z - x - y - z
-    ≈⟨ solve 6 (λ x y z mx my mz →
-                 x :* y :+ x :* z :+ y :* z :+ mx :+ my :+ mz
-                 :=
-                 y :* z :+ y :* x :+ z :* x :+ my :+ mz :+ mx
-               ) refl x y z (- x) (- y) (- z) ⟩
-      y * z + y * x + z * x - y - z - x
-    ≈⟨ y*z+y*x+z*x-y-z-x≈0 ⟩
+    ≈⟨ sym ([x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x y+z#1) ⟩
+      (x + func y z y+z#1 - 1#) * (y + z - 1#)
+    ≈⟨ *-cong (x≈y⇒x-y≈0 x+y⊛z≈1) refl ⟩
+      0# * (y + z - 1#)
+    ≈⟨ zeroˡ _ ⟩
       0#
     ∎
-    where
-      open Solver
-
-      y⊛z+x≈1 : func y z y+z#1 + x ≈ 1#
-      y⊛z+x≈1 =
-        begin
-          func y z y+z#1 + x
-        ≈⟨ +-comm _ _ ⟩
-          x + func y z y+z#1
-        ≈⟨ x+y⊛z≈1 ⟩
-          1#
-        ∎
-
-      y*z+y*x+z*x-y-z-x≈0 : y * z + y * x + z * x - y - z - x ≈ 0#
-      y*z+y*x+z*x-y-z-x≈0 = lemma-3 y z x y+z#1 y⊛z+x≈1
 
   lemma-4
     : ∀ x y z → (x+y#1 : x + y # 1#)
     → x * y + x * z + y * z - x - y - z ≈ 0#
     → func x y x+y#1 + z ≈ 1#
-  lemma-4 x y z x+y#1 xy+xz+yz-x-y-z≈0 =
+  lemma-4 x y z x+y#1 xy+xz+yz-x-y-z≈0 = x-y≈0⇒x≈y $
     begin
-      func x y x+y#1 + z
-    ≈⟨ refl ⟩
-      (x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z
-    ≈⟨ +-cong refl (sym (*-identityʳ z)) ⟩
-      (x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z * 1#
-    ≈⟨ +-cong refl (*-cong refl (sym (proj₂ (proj₂ (#⇒invertible x+y#1))))) ⟩
-      (x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z * ((x + y - 1#) * proj₁ (#⇒invertible x+y#1))
-    ≈⟨ +-cong refl (sym (*-assoc _ _ _)) ⟩
-      (x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z * (x + y - 1#) * proj₁ (#⇒invertible x+y#1)
-    ≈⟨ sym (distribʳ (proj₁ (#⇒invertible x+y#1)) _ _) ⟩
-      ((x * y - 1#) + z * (x + y - 1#)) * proj₁ (#⇒invertible x+y#1)
-    ≈⟨ *-cong (x-y≈0⇒x≈y lem) refl ⟩
-      (x + y - 1#) * proj₁ (#⇒invertible x+y#1)
-    ≈⟨ proj₂ (proj₂ (#⇒invertible x+y#1))  ⟩
-      1#
+      func x y x+y#1 + z - 1#
+    ≈⟨ sym (*-identityʳ _) ⟩
+      (func x y x+y#1 + z - 1#) * 1#
+    ≈⟨ *-cong refl (sym (proj₂ (proj₂ (#⇒invertible x+y#1)))) ⟩
+      (func x y x+y#1 + z - 1#) * ((x + y - 1#) * proj₁ (#⇒invertible x+y#1))
+    ≈⟨ sym (*-assoc _ _ _) ⟩
+      (func x y x+y#1 + z - 1#) * (x + y - 1#) * proj₁ (#⇒invertible x+y#1)
+    ≈⟨ *-cong ([x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z) refl ⟩
+      (x * y + x * z + y * z - x - y - z) * proj₁ (#⇒invertible x+y#1)
+    ≈⟨ *-cong xy+xz+yz-x-y-z≈0 refl ⟩
+      0# * proj₁ (#⇒invertible x+y#1)
+    ≈⟨ zeroˡ _ ⟩
+      0#
     ∎
-    where
-      open Solver
-
-      lem : (x * y - 1#) + z * (x + y - 1#) - (x + y - 1#) ≈ 0#
-      lem =
-        begin
-          (x * y - 1#) + z * (x + y - 1#) - (x + y - 1#)
-        ≈⟨ +-cong refl (sym (-1*x≈-x _)) ⟩
-          (x * y - 1#) + z * (x + y - 1#) + (- 1#) * (x + y - 1#)
-        ≈⟨ solve 4 (λ x y z m →
-                     (x :* y :+ m) :+ z :* (x :+ y :+ m) :+ m :* (x :+ y :+ m)
-                     :=
-                     x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z :+ (m :* m :+ m)
-                   ) refl x y z (- 1#) ⟩
-          x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + ((- 1#) * (- 1#) - 1#)
-        ≈⟨ +-cong (+-cong (+-cong (+-cong refl (-1*x≈-x x)) (-1*x≈-x y)) (-1*x≈-x z)) (+-cong -1*-1≈1 refl) ⟩
-          x * y + x * z + y * z - x - y - z + (1# - 1#)
-        ≈⟨ +-cong refl (-‿inverseʳ _) ⟩
-          x * y + x * z + y * z - x - y - z + 0#
-        ≈⟨ +-identityʳ _ ⟩
-          x * y + x * z + y * z - x - y - z
-        ≈⟨ xy+xz+yz-x-y-z≈0 ⟩
-          0#
-        ∎
 
   lemma-4'
     : ∀ x y z → (y+z#1 : y + z # 1#)
     → x * y + x * z + y * z - x - y - z ≈ 0#
     → x + func y z y+z#1 ≈ 1#
-  lemma-4' x y z y+z#1 xy+xz+yz-x-y-z≈0 =
+  lemma-4' x y z y+z#1 xy+xz+yz-x-y-z≈0 = x-y≈0⇒x≈y $
     begin
-      x + func y z y+z#1
-    ≈⟨ +-comm _ _ ⟩
-      func y z y+z#1 + x
-    ≈⟨ lemma-4 y z x y+z#1 yz+yx+zx-y-z-x≈0 ⟩
-      1#
+      x + func y z y+z#1 - 1#
+    ≈⟨ sym (*-identityʳ _) ⟩
+      (x + func y z y+z#1 - 1#) * 1#
+    ≈⟨ *-cong refl (sym (proj₂ (proj₂ (#⇒invertible y+z#1)))) ⟩
+      (x + func y z y+z#1 - 1#) * ((y + z - 1#) * proj₁ (#⇒invertible y+z#1))
+    ≈⟨ sym (*-assoc _ _ _) ⟩
+      (x + func y z y+z#1 - 1#) * (y + z - 1#) * proj₁ (#⇒invertible y+z#1)
+    ≈⟨ *-cong ([x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x y+z#1) refl ⟩
+      (x * y + x * z + y * z - x - y - z) * proj₁ (#⇒invertible y+z#1)
+    ≈⟨ *-cong xy+xz+yz-x-y-z≈0 refl ⟩
+      0# * proj₁ (#⇒invertible y+z#1)
+    ≈⟨ zeroˡ _ ⟩
+      0#
     ∎
-    where
-      open Solver
-
-      yz+yx+zx-y-z-x≈0 : y * z + y * x + z * x - y - z - x ≈ 0#
-      yz+yx+zx-y-z-x≈0 =
-        begin
-          y * z + y * x + z * x - y - z - x
-        ≈⟨ solve 6 (λ x y z mx my mz →
-                     y :* z :+ y :* x :+ z :* x :+ my :+ mz :+ mx
-                     :=
-                     x :* y :+ x :* z :+ y :* z :+ mx :+ my :+ mz
-                   ) refl x y z (- x) (- y) (- z) ⟩
-          x * y + x * z + y * z - x - y - z
-        ≈⟨ xy+xz+yz-x-y-z≈0 ⟩
-          0#
-        ∎
 
 open Utils
 
