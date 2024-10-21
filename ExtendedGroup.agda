@@ -372,8 +372,8 @@ module Utils where
       y+z≈1 : y + z ≈ 1#
       y+z≈1 = proj₁ (tight _ _) ¬y+z#1
 
-      x⊛y+z=1 : func x y x+y#1 + z ≈ 1#
-      x⊛y+z=1 = proj₁ (tight _ _) ¬x⊛y+z#1
+      x⊛y+z≈1 : func x y x+y#1 + z ≈ 1#
+      x⊛y+z≈1 = proj₁ (tight _ _) ¬x⊛y+z#1
 
       lem1 : (x * y - 1#) + z * (x + y - 1#) ≈ x + y - 1#
       lem1 =
@@ -389,7 +389,7 @@ module Utils where
           func x y x+y#1 * (x + y - 1#) + z * (x + y - 1#)
         ≈⟨ sym (distribʳ (x + y - 1#) _ _) ⟩
           (func x y x+y#1 + z) * (x + y - 1#)
-        ≈⟨ *-cong x⊛y+z=1 refl ⟩
+        ≈⟨ *-cong x⊛y+z≈1 refl ⟩
           1# * (x + y - 1#)
         ≈⟨ *-identityˡ _ ⟩
           x + y - 1#
@@ -756,11 +756,11 @@ module Main (condition : ∀ {x y} → ¬ ((x + y ≈F 1#) × (x * y ≈F 1#))) 
       tmp : x * y + x * z + y * z - x - y - z ≈F 0#
       tmp = lemma-3' x y z y+z#1 (proj₁ (tight _ _) (¬x+y⊛z#1))
 
-      x⊛y+z=1 : func x y x+y#1 + z ≈F 1#
-      x⊛y+z=1 = lemma-4 x y z x+y#1 tmp
+      x⊛y+z≈1 : func x y x+y#1 + z ≈F 1#
+      x⊛y+z≈1 = lemma-4 x y z x+y#1 tmp
 
       ¬x⊛y+z#1 : ¬ (func x y x+y#1 + z # 1#)
-      ¬x⊛y+z#1 = proj₂ (tight _ _) x⊛y+z=1
+      ¬x⊛y+z#1 = proj₂ (tight _ _) x⊛y+z≈1
 
   ⊛-fin-assoc x y z | yes x+y#1 | yes y+z#1 | no ¬x⊛y+z#1 | yes x+y⊛z#1 = ⊥-elim (¬x+y⊛z#1 x+y⊛z#1)
     where
