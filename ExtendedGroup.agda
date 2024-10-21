@@ -323,53 +323,45 @@ module Utils where
     where
       open Solver
 
-      lem3-lhs :  ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#) * (x + y - 1#)
+      lem3-lhs : (func x y x+y#1 * z - 1#) * (x + func y z y+z#1 - 1#) * (y + z - 1#) * (x + y - 1#)
                ≈ (x * y * z - x - y - z + 1#) * (x * y + x * z + y * z - x - y - z)
       lem3-lhs =
         begin
-          ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#) * (x + y - 1#)
-        ≈⟨ solve 4 (λ a b c d → a :* b :* c :* d := (a :* d) :* (b :* c)) refl
-             ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#)
-             (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#)
-             (y + z - 1#)
-             (x + y - 1#) ⟩
-          ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + y - 1#) * ((x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#))
+          (func x y x+y#1 * z - 1#) * (x + func y z y+z#1 - 1#) * (y + z - 1#) * (x + y - 1#)
+        ≈⟨ solve 4 (λ a b c d → a :* b :* c :* d := (a :* d) :* (b :* c)) refl _ _ _ _ ⟩
+          (func x y x+y#1 * z - 1#) * (x + y - 1#) * ((x + func y z y+z#1 - 1#) * (y + z - 1#))
         ≈⟨ *-cong ([[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1 x+y#1 z) ([x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x y+z#1) ⟩
           (x * y * z - x - y - z + 1#) * (x * y + x * z + y * z - x - y - z)
         ∎
 
-      lem3-rhs : (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (y + z - 1#) * (x + y - 1#)
+      lem3-rhs : (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#) * (y + z - 1#) * (x + y - 1#)
                ≈ (x * y * z - x - y - z + 1#) * (x * y + x * z + y * z - x - y - z)
       lem3-rhs =
         begin
-          (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (y + z - 1#) * (x + y - 1#)
-        ≈⟨ solve 4 (λ a b c d → a :* b :* c :* d := (a :* c) :* (b :* d)) refl
-             (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#)
-             ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#)
-             (y + z - 1#)
-             (x + y - 1#) ⟩
-          (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#)  * (y + z - 1#) * (((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (x + y - 1#))
+          (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#) * (y + z - 1#) * (x + y - 1#)
+        ≈⟨ solve 4 (λ a b c d → a :* b :* c :* d := (a :* c) :* (b :* d)) refl _ _ _ _ ⟩
+          (x * func y z y+z#1 - 1#)  * (y + z - 1#) * ((func x y x+y#1 + z - 1#) * (x + y - 1#))
         ≈⟨ *-cong ([x[y⊛z]-1][y+z-1]≈xyz-x-y-z+1 x y+z#1) ([x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z) ⟩
           (x * y * z - x - y - z + 1#) * (x * y + x * z + y * z - x - y - z)
         ∎
 
-      lem3 :  ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#) * (x + y - 1#)
-           ≈ (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (y + z - 1#) * (x + y - 1#)
+      lem3 : (func x y x+y#1 * z - 1#) * (x + func y z y+z#1 - 1#) * (y + z - 1#) * (x + y - 1#)
+           ≈ (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#) * (y + z - 1#) * (x + y - 1#)
       lem3 =
         begin
-          ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#) * (x + y - 1#)
+          (func x y x+y#1 * z - 1#) * (x + func y z y+z#1 - 1#) * (y + z - 1#) * (x + y - 1#)
         ≈⟨ lem3-lhs ⟩
           (x * y * z - x - y - z + 1#) * (x * y + x * z + y * z - x - y - z)
         ≈⟨ sym lem3-rhs ⟩
-          (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (y + z - 1#) * (x + y - 1#)
+          (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#) * (y + z - 1#) * (x + y - 1#)
         ∎
 
-      lem2 :  ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#)* (y + z - 1#)
-           ≈ (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (y + z - 1#)
+      lem2 : (func x y x+y#1 * z - 1#) * (x + func y z y+z#1 - 1#) * (y + z - 1#)
+           ≈ (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#) * (y + z - 1#)
       lem2 = *-cancelʳ (x + y - 1#) (#⇒invertible x+y#1) lem3
 
-      lem1 :  ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z   - 1#) * (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#)
-           ≈ (x * ((y * z - 1#) * proj₁ (#⇒invertible y+z#1)) - 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#)
+      lem1 : (func x y x+y#1 * z   - 1#) * (x + func y z y+z#1 - 1#)
+           ≈ (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#)
       lem1 = *-cancelʳ (y + z - 1#) (#⇒invertible y+z#1) lem2
 
   lemma-1 : ∀ {x y z} → (x+y#1 : x + y # 1#) → ¬ (y + z # 1#) → ¬ (func x y x+y#1 + z # 1#) → ((y + z ≈ 1#) × (y * z ≈ 1#))
