@@ -238,12 +238,14 @@ module Utils where
   [x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x {y} {z} y+z#1 =
     begin
       (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#)
-    ≈⟨ solve 5 (λ a b c d e → (a :+ b :* c :+ d) :* e := a :* e :+ b :* (c :* e) :+ d :* e) refl
-         x (y * z - 1#) (proj₁ (#⇒invertible y+z#1)) (- 1#) (y + z - 1#) ⟩
+    ≈⟨ solve 5 (λ a b c d e → (a :+ b :* c :+ d) :* e := a :* e :+ b :* (c :* e) :+ d :* e) refl _ _ _ _ _ ⟩
       x * (y + z - 1#) + (y * z - 1#) * (proj₁ (#⇒invertible y+z#1) * (y + z - 1#)) + (- 1#) * (y + z - 1#)
     ≈⟨ +-cong (+-cong refl (*-cong refl ((proj₁ (proj₂ (#⇒invertible y+z#1)))))) refl ⟩
       x * (y + z - 1#) + (y * z - 1#) * 1# + (- 1#) * (y + z - 1#)
-    ≈⟨ solve 4 (λ x y z m → x :* (y :+ z :+ m) :+ (y :* z :+ m) :* con 1 :+ m :* (y :+ z :+ m) := x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z :+ (m :* m :+ m)) refl x y z (- 1#) ⟩
+    ≈⟨ solve 4 (λ x y z m →
+                 x :* (y :+ z :+ m) :+ (y :* z :+ m) :* con 1 :+ m :* (y :+ z :+ m)
+                 := x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z :+ (m :* m :+ m)
+               ) refl x y z (- 1#) ⟩
       x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + ((- 1#) * (- 1#) + (- 1#))
     ≈⟨ +-cong refl (+-cong -1*-1≈1 refl) ⟩
       x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + (1# + (- 1#))
