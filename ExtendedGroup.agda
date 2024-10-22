@@ -407,91 +407,76 @@ module Utils where
       y*z≈1 = x-y≈0⇒x≈y lem4
 
   lemma-2 : ∀ {x y z} → (x+y#1 : x + y # 1#) → ¬ (y + z # 1#) → (x⊛y+z#1 : func x y x+y#1 + z # 1#) → func (func x y x+y#1) z x⊛y+z#1 ≈ x
-  lemma-2 {x} {y} {z} x+y#1 ¬y+z#1 x⊛y+z#1 = lem1
+  lemma-2 {x} {y} {z} x+y#1 ¬y+z#1 x⊛y+z#1 =
+    *-cancelʳ (func x y x+y#1 + z - 1#) (#⇒invertible x⊛y+z#1) $
+    *-cancelʳ (x + y - 1#) (#⇒invertible x+y#1) $ lem2
     where
       open Solver
-
-      -1³≈-1 : (- 1#) * (- 1#) * (- 1#) ≈ (- 1#)
-      -1³≈-1 =
-        begin
-          (- 1#) * (- 1#) * (- 1#)
-        ≈⟨ *-cong -1*-1≈1 refl ⟩
-          1# * (- 1#)
-        ≈⟨ *-identityˡ _ ⟩
-          (- 1#)
-        ∎
 
       y+z≈1 : y + z ≈ 1#
       y+z≈1 = proj₁ (tight _ _) ¬y+z#1
 
-      2x-x-x≈0 : (1# + 1#) * x - x - x ≈ 0#
-      2x-x-x≈0 =
+      [x⊛y+z-1][x+y-1]≈yz-1 : (func x y x+y#1 + z - 1#) * (x + y - 1#) ≈ y * z - 1#
+      [x⊛y+z-1][x+y-1]≈yz-1 =
         begin
-          (1# + 1#) * x - x - x
-        ≈⟨ solve 2 (λ x y → con 2 :* x :+ y :+ y := con 2 :* (x :+ y)) refl x (- x) ⟩
-          (1# + 1#) * (x - x)
-        ≈⟨ *-cong refl (-‿inverseʳ _) ⟩
-          (1# + 1#) * 0#
-        ≈⟨ zeroʳ _ ⟩
+         (func x y x+y#1 + z - 1#) * (x + y - 1#)
+        ≈⟨ [x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z ⟩
+          x * y + x * z + y * z - x - y - z
+        ≈⟨ sym (+-cong (+-cong (+-cong refl (-1*x≈-x x)) (-1*x≈-x y)) (-1*x≈-x z)) ⟩
+          x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z
+        ≈⟨ solve 4 (λ x y z m → x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z := y :* z :+ m :* (y :+ z) :+ (x :* (y :+ z) :+ m :* x)) refl x y z (- 1#) ⟩
+          y * z + (- 1#) * (y + z) + (x * (y + z) + (- 1#) * x)
+        ≈⟨ +-cong (+-cong refl (*-cong refl y+z≈1)) (+-cong (*-cong refl y+z≈1) (-1*x≈-x x)) ⟩
+          y * z + (- 1#) * 1# + (x * 1# - x)
+        ≈⟨ +-cong refl (+-cong (*-identityʳ x) refl) ⟩
+          y * z + (- 1#) * 1# + (x - x)
+        ≈⟨ +-cong refl (-‿inverseʳ x) ⟩
+          y * z + (- 1#) * 1# + 0#
+        ≈⟨ +-identityʳ _ ⟩
+          y * z + (- 1#) * 1#
+        ≈⟨ +-cong refl (-1*x≈-x 1#) ⟩
+          y * z - 1#
+        ∎
+
+      lem1 : 1# + (- 1#) * (y + z) ≈ 0#
+      lem1 =
+        begin
+          1# + (- 1#) * (y + z)
+        ≈⟨ +-cong refl (*-cong refl y+z≈1) ⟩
+          1# + (- 1#) * 1#
+        ≈⟨ +-cong refl (-1*x≈-x 1#) ⟩
+          1# - 1#
+        ≈⟨ -‿inverseʳ 1# ⟩
           0#
         ∎
 
-      lem5 : (x * (func x y x+y#1 + z - 1#) - (func x y x+y#1 * z - 1#)) * (x + y - 1#) ≈ 0#
-      lem5 =
+      lem2 : func (func x y x+y#1) z x⊛y+z#1 * (func x y x+y#1 + z - 1#) * (x + y - 1#) ≈ x * (func x y x+y#1 + z - 1#) * (x + y - 1#)
+      lem2 =
         begin
-          (x * (func x y x+y#1 + z - 1#) - (func x y x+y#1 * z - 1#)) * (x + y - 1#)
-        ≈⟨ *-cong (+-cong refl (sym (-1*x≈-x _))) refl ⟩
-          (x * (func x y x+y#1 + z - 1#) + (- 1#) * (func x y x+y#1 * z - 1#)) * (x + y - 1#)
+          func (func x y x+y#1) z x⊛y+z#1 * (func x y x+y#1 + z - 1#) * (x + y - 1#)
         ≈⟨ refl ⟩
-          (x * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) + (- 1#) * ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#)) * (x + y - 1#)
-        ≈⟨ solve 7
-             (λ x y z p s s⁻¹ m →
-                (x :* (p :* s⁻¹ :+ z :+ m) :+ m :* (p :* s⁻¹ :* z :+ m)) :* s
-                :=
-                (x :* (p :* (s⁻¹ :* s) :+ z :* s :+ m :* s) :+ m :* (p :* (s⁻¹ :* s) :* z :+ m :* s))
-             ) refl x y z (x * y - 1#) (x + y - 1#) (proj₁ (#⇒invertible x+y#1)) (- 1#) ⟩
-          (x * ((x * y - 1#) * (proj₁ (#⇒invertible x+y#1) * (x + y - 1#)) + z * (x + y - 1#) + (- 1#) * (x + y - 1#))
-          + (- 1#) * ((x * y - 1#) * (proj₁ (#⇒invertible x+y#1) * (x + y - 1#)) * z + (- 1#) * (x + y - 1#)))
-        ≈⟨ +-cong (*-cong (refl {x}) (+-cong (+-cong (*-cong refl (proj₁ (proj₂ (#⇒invertible x+y#1)))) refl) refl))
-                  (*-cong refl (+-cong (*-cong (*-cong refl (proj₁ (proj₂ (#⇒invertible x+y#1)))) (refl {z})) refl)) ⟩
-          (x * ((x * y - 1#) * 1# + z * (x + y - 1#) + (- 1#) * (x + y - 1#)) + (- 1#) * ((x * y - 1#) * 1# * z + (- 1#) * (x + y - 1#)))
-        ≈⟨ solve 4
-             (λ x y z m →
-               x :* ((x :* y :+ m) :* con 1 :+ z :* (x :+ y :+ m) :+ m :* (x :+ y :+ m)) :+ m :* ((x :* y :+ m) :* con 1 :* z :+ m :* (x :+ y :+ m))
-               :=
-               (x :* x :* (y :+ z) :+ m :* (x :* x)) :+ (con 2 :* (m :* m) :* x :+ m :* x :+ m :* x :* (y :+ z)) :+ (x :* y :* z :+ m :* (x :* y :* z)) :+ ((m :* m) :* (y :+ z) :+ m :* m :* m)
-             ) refl x y z (- 1#) ⟩
-           (x * x * (y + z) + (- 1#) * (x * x)) + ((1# + 1#) * ((- 1#) * (- 1#)) * x + (- 1#) * x + (- 1#) * x * (y + z)) + (x * y * z + (- 1#) * (x * y * z)) + (((- 1#) * (- 1#)) * (y + z) + (- 1#) * (- 1#) * (- 1#))
-        ≈⟨ +-cong (+-cong (+-cong (+-cong (*-cong refl y+z≈1) (-1*x≈-x (x * x)))
-                                  (+-cong (+-cong (*-cong (*-cong (refl {1# + 1#})-1*-1≈1) (refl {x})) (-1*x≈-x x))
-                                          (*-cong (refl {(- 1#) * x}) y+z≈1)))
-                          (+-cong refl (-1*x≈-x (x * y * z))))
-                  (+-cong (*-cong -1*-1≈1  y+z≈1) -1³≈-1) ⟩
-           (x * x * 1# - (x * x)) + ((1# + 1#) * 1# * x - x + (- 1#) * x * 1#) + (x * y * z - x * y * z) + (1# * 1# - 1#)
-        ≈⟨ +-cong (+-cong (+-cong (+-cong (*-identityʳ _) refl)
-                                  (+-cong (+-cong (*-cong (*-identityʳ _) (refl {x})) (refl {(- x)})) (*-identityʳ ((- 1#) * x))))
-                          (-‿inverseʳ _))
-                  (+-cong (*-identityˡ _) refl) ⟩
-           (x * x - (x * x)) + ((1# + 1#) * x - x + (- 1#) * x) + 0# + (1# - 1#)
-        ≈⟨ +-cong (+-cong (+-cong (-‿inverseʳ (x * x)) (+-cong refl (-1*x≈-x x))) (refl {0#})) (-‿inverseʳ _) ⟩
-           0# + ((1# + 1#) * x - x - x) + 0# + 0#
-        ≈⟨ +-cong (+-cong (+-cong refl 2x-x-x≈0) refl) refl ⟩
-           0# + 0# + 0# + 0#
-        ≈⟨ solve 0 (con 0 :+ con 0 :+ con 0 :+ con 0 := con 0) refl ⟩
-          0#
+          (func x y x+y#1 * z - 1#) * proj₁ (#⇒invertible x⊛y+z#1) * (func x y x+y#1 + z - 1#) * (x + y - 1#)
+        ≈⟨ *-cong (*-assoc _ _ _) refl ⟩
+          (func x y x+y#1 * z - 1#) * (proj₁ (#⇒invertible x⊛y+z#1) * (func x y x+y#1 + z - 1#)) * (x + y - 1#)
+        ≈⟨ *-cong (*-cong refl (proj₁ (proj₂ (#⇒invertible x⊛y+z#1)))) refl ⟩
+          (func x y x+y#1 * z - 1#) * 1# * (x + y - 1#)
+        ≈⟨ *-cong (*-identityʳ _) refl ⟩
+          (func x y x+y#1 * z - 1#) * (x + y - 1#)
+        ≈⟨ [[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1 x+y#1 z ⟩
+          x * y * z - x - y - z + 1#
+        ≈⟨ +-cong (+-cong (+-cong (+-cong refl (sym (-1*x≈-x x))) (sym (-1*x≈-x y))) (sym (-1*x≈-x z))) refl ⟩
+          x * y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + 1#
+        ≈⟨ solve 4 (λ x y z m → x :* y :* z :+ m :* x :+ m :* y :+ m :* z :+ con 1 := x :* (y :* z :+ m) :+ (con 1 :+ m :* (y :+ z))) refl x y z (- 1#) ⟩
+          x * (y * z - 1#) + (1# + (- 1#) * (y + z))
+        ≈⟨ +-cong refl lem1 ⟩
+          x * (y * z - 1#) + 0#
+        ≈⟨ +-identityʳ _ ⟩
+          x * (y * z - 1#)
+        ≈⟨ *-cong refl (sym [x⊛y+z-1][x+y-1]≈yz-1) ⟩
+          x * ((func x y x+y#1 + z - 1#) * (x + y - 1#))
+        ≈⟨ sym (*-assoc _ _ _) ⟩
+          x * (func x y x+y#1 + z - 1#) * (x + y - 1#)
         ∎
-
-      lem4 : (x * (func x y x+y#1 + z - 1#) - (func x y x+y#1 * z - 1#)) * (x + y - 1#) ≈ 0# * (x + y - 1#)
-      lem4 = trans lem5 (sym (zeroˡ _))
-
-      lem3 : x * (func x y x+y#1 + z - 1#) - (func x y x+y#1 * z - 1#) ≈ 0#
-      lem3 = *-cancelʳ (x + y - 1#) (#⇒invertible x+y#1) lem4
-
-      lem2 : x * (func x y x+y#1 + z - 1#) ≈ func x y x+y#1 * z - 1#
-      lem2 = x-y≈0⇒x≈y lem3
-
-      lem1 : func (func x y x+y#1) z x⊛y+z#1 ≈ x
-      lem1 = sym (invert-right lem2 (#⇒invertible x⊛y+z#1))
 
   lemma-3
     : ∀ x y z → (x+y#1 : x + y # 1#)
