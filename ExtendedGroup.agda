@@ -47,6 +47,7 @@ module Utils where
   open HeytingField HF hiding (refl; sym; trans)
   open IsEquivalence isEquivalence
   open import Algebra.Properties.Ring (CommutativeRing.ring (HeytingCommutativeRing.commutativeRing heytingCommutativeRing)) using (-1*x≈-x) public
+  open import Algebra.Apartness.Properties.HeytingCommutativeRing heytingCommutativeRing using (#-congʳ)
   module Solver = Algebra.Solver.Ring.NaturalCoefficients.Default
     (CommutativeRing.commutativeSemiring (HeytingCommutativeRing.commutativeRing heytingCommutativeRing))
   open ≈-Reasoning setoid
@@ -232,18 +233,64 @@ module Utils where
     (+-cong (*-comm x y) refl)
     (unique-inverse (+-cong (+-comm x y) refl) (#⇒invertible x+y#1) (#⇒invertible y+x#1))
 
-  [x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z
-    : ∀ x {y z} → (y+z#1 : y + z # 1#)
-    → (x + func y z y+z#1 - 1#) * (y + z - 1#) ≈ x * y + x * z + y * z - x - y - z
-  [x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x {y} {z} y+z#1 =
+  -- (x ⊛ y) ⊛ z を「分子/分母」と書いたときに現れる、x, y, z について対称な多項式
+  N : Carrier → Carrier → Carrier → Carrier
+  N x y z = x * y * z - x - y - z + 1#
+
+  D : Carrier → Carrier → Carrier → Carrier
+  D x y z = x * y + x * z + y * z - x - y - z
+
+  N-sym : ∀ x y z → N x y z ≈ N z y x
+  N-sym x y z = solve 6
+    (λ x y z mx my mz → x :* y :* z :+ mx :+ my :+ mz :+ con 1
+                     := z :* y :* x :+ mz :+ my :+ mx :+ con 1)
+    refl x y z (- x) (- y) (- z)
+    where open Solver
+
+  D-sym : ∀ x y z → D x y z ≈ D z y x
+  D-sym x y z = solve 6
+    (λ x y z mx my mz → x :* y :+ x :* z :+ y :* z :+ mx :+ my :+ mz
+                     := z :* y :+ z :* x :+ y :* x :+ mz :+ my :+ mx)
+    refl x y z (- x) (- y) (- z)
+    where open Solver
+
+  -- y + z ≈ 1 のとき D x y z は y * z - 1 に簡約される
+  D-when-y+z≈1 : ∀ x {y z} → y + z ≈ 1# → D x y z ≈ y * z - 1#
+  D-when-y+z≈1 x {y} {z} y+z≈1 = begin
+    x * y + x * z + y * z - x - y - z
+      ≈⟨ +-cong (+-cong (+-cong refl (sym (-1*x≈-x x))) (sym (-1*x≈-x y))) (sym (-1*x≈-x z)) ⟩
+    x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z
+      ≈⟨ solve 4 (λ x y z m → x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z
+                           := x :* (y :+ z) :+ y :* z :+ m :* x :+ m :* (y :+ z))
+           refl x y z (- 1#) ⟩
+    x * (y + z) + y * z + (- 1#) * x + (- 1#) * (y + z)
+      ≈⟨ +-cong (+-cong (+-cong (*-cong refl y+z≈1) refl) refl) (*-cong refl y+z≈1) ⟩
+    x * 1# + y * z + (- 1#) * x + (- 1#) * 1#
+      ≈⟨ +-cong (+-cong (+-cong (*-identityʳ x) refl) (-1*x≈-x x)) (-1*x≈-x 1#) ⟩
+    x + y * z + (- x) + (- 1#)
+      ≈⟨ solve 4 (λ a b c m → a :+ b :+ c :+ m := b :+ (a :+ c) :+ m)
+           refl x (y * z) (- x) (- 1#) ⟩
+    y * z + (x + (- x)) + (- 1#)
+      ≈⟨ +-cong (+-cong refl (-‿inverseʳ x)) refl ⟩
+    y * z + 0# + (- 1#)
+      ≈⟨ +-cong (+-identityʳ _) refl ⟩
+    y * z - 1#
+    ∎
+    where open Solver
+
+  -- 鍵となる多項式恒等式（base 版）：(func x y + z - 1)(x + y - 1) ≈ D x y z
+  [func+z-1][x+y-1]≈D
+    : ∀ {x y} → (x+y#1 : x + y # 1#) → ∀ z
+    → (func x y x+y#1 + z - 1#) * (x + y - 1#) ≈ D x y z
+  [func+z-1][x+y-1]≈D {x} {y} x+y#1 z =
     begin
-      (x + (y * z - 1#) * proj₁ (#⇒invertible y+z#1) - 1#) * (y + z - 1#)
-    ≈⟨ solve 5 (λ a b c d e → (a :+ b :* c :+ d) :* e := a :* e :+ b :* (c :* e) :+ d :* e) refl _ _ _ _ _ ⟩
-      x * (y + z - 1#) + (y * z - 1#) * (proj₁ (#⇒invertible y+z#1) * (y + z - 1#)) + (- 1#) * (y + z - 1#)
-    ≈⟨ +-cong (+-cong refl (*-cong refl ((proj₁ (proj₂ (#⇒invertible y+z#1)))))) refl ⟩
-      x * (y + z - 1#) + (y * z - 1#) * 1# + (- 1#) * (y + z - 1#)
+      ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) + z - 1#) * (x + y - 1#)
+    ≈⟨ solve 5 (λ a b c d e → (a :* b :+ c :+ d) :* e := a :* (b :* e) :+ c :* e :+ d :* e) refl _ _ _ _ _ ⟩
+      (x * y - 1#) * (proj₁ (#⇒invertible x+y#1) * (x + y - 1#)) + z * (x + y - 1#) + (- 1#) * (x + y - 1#)
+    ≈⟨ +-cong (+-cong (*-cong refl (proj₁ (proj₂ (#⇒invertible x+y#1)))) refl) refl ⟩
+      (x * y - 1#) * 1# + z * (x + y - 1#) + (- 1#) * (x + y - 1#)
     ≈⟨ solve 4 (λ x y z m →
-                 x :* (y :+ z :+ m) :+ (y :* z :+ m) :* con 1 :+ m :* (y :+ z :+ m)
+                 (x :* y :+ m) :* con 1 :+ z :* (x :+ y :+ m) :+ m :* (x :+ y :+ m)
                  := x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z :+ (m :* m :+ m)
                ) refl x y z (- 1#) ⟩
       x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + ((- 1#) * (- 1#) + (- 1#))
@@ -257,30 +304,31 @@ module Utils where
     where
       open Solver
 
-  [x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z
-    : ∀ {x y} → (x+y#1 : x + y # 1#) → ∀ z
-    → (func x y x+y#1 + z - 1#) * (x + y - 1#) ≈ x * y + x * z + y * z - x - y - z
-  [x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z {x} {y} x+y#1 z =
+  -- 派生版：base + +-comm + func-comm + D-sym で従う
+  [x+func-1][y+z-1]≈D
+    : ∀ x {y z} → (y+z#1 : y + z # 1#)
+    → (x + func y z y+z#1 - 1#) * (y + z - 1#) ≈ D x y z
+  [x+func-1][y+z-1]≈D x {y} {z} y+z#1 =
     begin
-      (func x y x+y#1 + z - 1#) * (x + y - 1#)
-    ≈⟨ *-cong (+-cong (+-comm _ _) refl) refl ⟩
-      (z + func x y x+y#1 - 1#) * (x + y - 1#)
-    ≈⟨ [x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z z x+y#1 ⟩
-      z * x + z * y + x * y - z - x - y
-    ≈⟨ solve 6 (λ x y z mx my mz →
-                 z :* x :+ z :* y :+ x :* y :+ mz :+ mx :+ my
-                 :=
-                 x :* y :+ x :* z :+ y :* z :+ mx :+ my :+ mz
-               ) refl x y z (- x) (- y) (- z) ⟩
-      x * y + x * z + y * z - x - y - z
+      (x + func y z y+z#1 - 1#) * (y + z - 1#)
+    ≈⟨ *-cong (+-cong (+-cong refl (func-comm y z y+z#1 z+y#1)) refl) (+-cong (+-comm y z) refl) ⟩
+      (x + func z y z+y#1 - 1#) * (z + y - 1#)
+    ≈⟨ *-cong (+-cong (+-comm x (func z y z+y#1)) refl) refl ⟩
+      (func z y z+y#1 + x - 1#) * (z + y - 1#)
+    ≈⟨ [func+z-1][x+y-1]≈D z+y#1 x ⟩
+      D z y x
+    ≈⟨ sym (D-sym x y z) ⟩
+      D x y z
     ∎
     where
-      open Solver
+      z+y#1 : z + y # 1#
+      z+y#1 = #-congʳ (+-comm y z) y+z#1
 
-  [[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1
+  -- 鍵となる多項式恒等式（base 版）：(func x y * z - 1)(x + y - 1) ≈ N x y z
+  [func*z-1][x+y-1]≈N
     : ∀ {x y} → (x+y#1 : x + y # 1#) → ∀ z
-    → (func x y x+y#1 * z - 1#) * (x + y - 1#) ≈ x * y * z - x - y - z + 1#
-  [[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1 {x} {y} x+y#1 z =
+    → (func x y x+y#1 * z - 1#) * (x + y - 1#) ≈ N x y z
+  [func*z-1][x+y-1]≈N {x} {y} x+y#1 z =
     begin
       ((x * y - 1#) * proj₁ (#⇒invertible x+y#1) * z - 1#) * (x + y - 1#)
     ≈⟨ solve 5 (λ p s s⁻¹ z c → (p :* s⁻¹ :* z :+ c) :* s := p :* (s⁻¹ :* s) :* z :+ c :* s)
@@ -298,21 +346,25 @@ module Utils where
     where
       open Solver
 
-  [x[y⊛z]-1][y+z-1]≈xyz-x-y-z+1
+  -- 派生版：base + *-comm + func-comm + N-sym で従う
+  [x*func-1][y+z-1]≈N
     : ∀ x {y z} → (y+z#1 : y + z # 1#)
-    → (x * func y z y+z#1 - 1#) * (y + z - 1#) ≈ x * y * z - x - y - z + 1#
-  [x[y⊛z]-1][y+z-1]≈xyz-x-y-z+1 x {y} {z} y+z#1 =
+    → (x * func y z y+z#1 - 1#) * (y + z - 1#) ≈ N x y z
+  [x*func-1][y+z-1]≈N x {y} {z} y+z#1 =
     begin
       (x * func y z y+z#1 - 1#) * (y + z - 1#)
-    ≈⟨ *-cong (+-cong (*-comm _ _) refl) refl ⟩
-      ((func y z y+z#1 * x - 1#) * (y + z - 1#))
-    ≈⟨ [[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1 y+z#1 x ⟩
-      y * z * x - y - z - x + 1#
-    ≈⟨  solve 6 (λ x y z mx my mz → y :* z :* x :+ my :+ mz :+ mx :+ con 1 := x :* y :* z :+ mx :+ my :+ mz :+ con 1) refl x y z (- x) (- y) (- z) ⟩
-      x * y * z - x - y - z + 1#
+    ≈⟨ *-cong (+-cong (*-cong refl (func-comm y z y+z#1 z+y#1)) refl) (+-cong (+-comm y z) refl) ⟩
+      (x * func z y z+y#1 - 1#) * (z + y - 1#)
+    ≈⟨ *-cong (+-cong (*-comm x (func z y z+y#1)) refl) refl ⟩
+      (func z y z+y#1 * x - 1#) * (z + y - 1#)
+    ≈⟨ [func*z-1][x+y-1]≈N z+y#1 x ⟩
+      N z y x
+    ≈⟨ sym (N-sym x y z) ⟩
+      N x y z
     ∎
     where
-      open Solver
+      z+y#1 : z + y # 1#
+      z+y#1 = #-congʳ (+-comm y z) y+z#1
 
   func-assoc
     : ∀ x y z
@@ -325,134 +377,143 @@ module Utils where
     where
       open Solver
 
+      -- 中央 N(x,y,z) * D(x,y,z) は x↔z で対称なので、両辺は等しい（refl で繋がる）
       lem : (func x y x+y#1 * z   - 1#) * (x + func y z y+z#1 - 1#) ≈ (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#)
       lem = *-cancelʳ (y + z - 1#) (#⇒invertible y+z#1) $ *-cancelʳ (x + y - 1#) (#⇒invertible x+y#1) $
         begin
           (func x y x+y#1 * z - 1#) * (x + func y z y+z#1 - 1#) * (y + z - 1#) * (x + y - 1#)
         ≈⟨ solve 4 (λ a b c d → a :* b :* c :* d := (a :* d) :* (b :* c)) refl _ _ _ _ ⟩
           (func x y x+y#1 * z - 1#) * (x + y - 1#) * ((x + func y z y+z#1 - 1#) * (y + z - 1#))
-        ≈⟨ *-cong ([[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1 x+y#1 z) ([x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x y+z#1) ⟩
-          (x * y * z - x - y - z + 1#) * (x * y + x * z + y * z - x - y - z)
-        ≈⟨ *-cong (sym ([x[y⊛z]-1][y+z-1]≈xyz-x-y-z+1 x y+z#1)) (sym ([x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z)) ⟩
+        ≈⟨ *-cong ([func*z-1][x+y-1]≈N x+y#1 z) ([x+func-1][y+z-1]≈D x y+z#1) ⟩
+          N x y z * D x y z
+        ≈⟨ *-cong (sym ([x*func-1][y+z-1]≈N x y+z#1)) (sym ([func+z-1][x+y-1]≈D x+y#1 z)) ⟩
           (x * func y z y+z#1 - 1#)  * (y + z - 1#) * ((func x y x+y#1 + z - 1#) * (x + y - 1#))
         ≈⟨ solve 4 (λ a b c d → (a :* c) :* (b :* d) := a :* b :* c :* d) refl _ _ _ _ ⟩
           (x * func y z y+z#1 - 1#) * (func x y x+y#1 + z - 1#) * (y + z - 1#) * (x + y - 1#)
         ∎
 
-  lemma-1 : ∀ {x y z} → (x+y#1 : x + y # 1#) → ¬ (y + z # 1#) → ¬ (func x y x+y#1 + z # 1#) → ((y + z ≈ 1#) × (y * z ≈ 1#))
-  lemma-1 {x} {y} {z} x+y#1 ¬y+z#1 ¬x⊛y+z#1 = (y+z≈1 , y*z≈1)
-    where
-      open Solver
+  -- 「結合律の核」：(x+y#1 のとき) func x y + z ≈ 1 ⟺ D x y z ≈ 0
+  --   forward: 旧 lemma-3 の役割
+  func+z≈1⇒D≈0
+    : ∀ {x y} → (x+y#1 : x + y # 1#) → ∀ z
+    → func x y x+y#1 + z ≈ 1# → D x y z ≈ 0#
+  func+z≈1⇒D≈0 {x} {y} x+y#1 z x⊛y+z≈1 =
+    begin
+      D x y z
+    ≈⟨ sym ([func+z-1][x+y-1]≈D x+y#1 z) ⟩
+      (func x y x+y#1 + z - 1#) * (x + y - 1#)
+    ≈⟨ *-cong (x≈y⇒x-y≈0 x⊛y+z≈1) refl ⟩
+      0# * (x + y - 1#)
+    ≈⟨ zeroˡ _ ⟩
+      0#
+    ∎
 
-      y+z≈1 : y + z ≈ 1#
-      y+z≈1 = proj₁ (tight _ _) ¬y+z#1
+  --   backward: 旧 lemma-4 の役割
+  D≈0⇒func+z≈1
+    : ∀ {x y} → (x+y#1 : x + y # 1#) → ∀ z
+    → D x y z ≈ 0# → func x y x+y#1 + z ≈ 1#
+  D≈0⇒func+z≈1 {x} {y} x+y#1 z D≈0 = x-y≈0⇒x≈y $
+    begin
+      func x y x+y#1 + z - 1#
+    ≈⟨ sym (*-identityʳ _) ⟩
+      (func x y x+y#1 + z - 1#) * 1#
+    ≈⟨ *-cong refl (sym (proj₂ (proj₂ (#⇒invertible x+y#1)))) ⟩
+      (func x y x+y#1 + z - 1#) * ((x + y - 1#) * proj₁ (#⇒invertible x+y#1))
+    ≈⟨ sym (*-assoc _ _ _) ⟩
+      (func x y x+y#1 + z - 1#) * (x + y - 1#) * proj₁ (#⇒invertible x+y#1)
+    ≈⟨ *-cong ([func+z-1][x+y-1]≈D x+y#1 z) refl ⟩
+      D x y z * proj₁ (#⇒invertible x+y#1)
+    ≈⟨ *-cong D≈0 refl ⟩
+      0# * proj₁ (#⇒invertible x+y#1)
+    ≈⟨ zeroˡ _ ⟩
+      0#
+    ∎
 
-      x⊛y+z≈1 : func x y x+y#1 + z ≈ 1#
-      x⊛y+z≈1 = proj₁ (tight _ _) ¬x⊛y+z#1
+  --   forward (右ずらし版): 旧 lemma-3' の役割
+  x+func≈1⇒D≈0
+    : ∀ x {y z} → (y+z#1 : y + z # 1#)
+    → x + func y z y+z#1 ≈ 1# → D x y z ≈ 0#
+  x+func≈1⇒D≈0 x {y} {z} y+z#1 x+y⊛z≈1 =
+    begin
+      D x y z
+    ≈⟨ sym ([x+func-1][y+z-1]≈D x y+z#1) ⟩
+      (x + func y z y+z#1 - 1#) * (y + z - 1#)
+    ≈⟨ *-cong (x≈y⇒x-y≈0 x+y⊛z≈1) refl ⟩
+      0# * (y + z - 1#)
+    ≈⟨ zeroˡ _ ⟩
+      0#
+    ∎
 
-      lem1 : (x * y - 1#) + z * (x + y - 1#) ≈ x + y - 1#
-      lem1 =
-        begin
-          (x * y - 1#) + z * (x + y - 1#)
-        ≈⟨ +-cong (sym (*-identityʳ _)) refl ⟩
-          (x * y - 1#) * 1# + z * (x + y - 1#)
-        ≈⟨ +-cong (*-cong refl (sym (proj₁ (proj₂ (#⇒invertible x+y#1))))) refl ⟩
-          (x * y - 1#) * (proj₁ (#⇒invertible x+y#1) * (x + y - 1#)) + z * (x + y - 1#)
-        ≈⟨ +-cong (sym (*-assoc _ _ _)) refl ⟩
-          (x * y - 1#) * proj₁ (#⇒invertible x+y#1) * (x + y - 1#) + z * (x + y - 1#)
-        ≈⟨ refl ⟩
-          func x y x+y#1 * (x + y - 1#) + z * (x + y - 1#)
-        ≈⟨ sym (distribʳ (x + y - 1#) _ _) ⟩
-          (func x y x+y#1 + z) * (x + y - 1#)
-        ≈⟨ *-cong x⊛y+z≈1 refl ⟩
-          1# * (x + y - 1#)
-        ≈⟨ *-identityˡ _ ⟩
-          x + y - 1#
-        ∎
+  --   backward (右ずらし版): 旧 lemma-4' の役割
+  D≈0⇒x+func≈1
+    : ∀ x {y z} → (y+z#1 : y + z # 1#)
+    → D x y z ≈ 0# → x + func y z y+z#1 ≈ 1#
+  D≈0⇒x+func≈1 x {y} {z} y+z#1 D≈0 = x-y≈0⇒x≈y $
+    begin
+      x + func y z y+z#1 - 1#
+    ≈⟨ sym (*-identityʳ _) ⟩
+      (x + func y z y+z#1 - 1#) * 1#
+    ≈⟨ *-cong refl (sym (proj₂ (proj₂ (#⇒invertible y+z#1)))) ⟩
+      (x + func y z y+z#1 - 1#) * ((y + z - 1#) * proj₁ (#⇒invertible y+z#1))
+    ≈⟨ sym (*-assoc _ _ _) ⟩
+      (x + func y z y+z#1 - 1#) * (y + z - 1#) * proj₁ (#⇒invertible y+z#1)
+    ≈⟨ *-cong ([x+func-1][y+z-1]≈D x y+z#1) refl ⟩
+      D x y z * proj₁ (#⇒invertible y+z#1)
+    ≈⟨ *-cong D≈0 refl ⟩
+      0# * proj₁ (#⇒invertible y+z#1)
+    ≈⟨ zeroˡ _ ⟩
+      0#
+    ∎
 
-      lem2 : (x * y - 1#) + z * (x + y - 1#) - (x + y - 1#) ≈ 0#
-      lem2 = x≈y⇒x-y≈0 lem1
+  -- y + z ≈ 1 のとき N(x, y, z) は x * D(x, y, z) に等しい（[func[func]z]≈x の核となる代数的事実）
+  N≈x*D-when-y+z≈1
+    : ∀ x {y z} → y + z ≈ 1# → N x y z ≈ x * D x y z
+  N≈x*D-when-y+z≈1 x {y} {z} y+z≈1 = begin
+    x * y * z - x - y - z + 1#
+      ≈⟨ +-cong (+-cong (+-cong (+-cong refl (sym (-1*x≈-x x))) (sym (-1*x≈-x y))) (sym (-1*x≈-x z))) refl ⟩
+    x * y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + 1#
+      ≈⟨ solve 4 (λ x y z m →
+                     x :* y :* z :+ m :* x :+ m :* y :+ m :* z :+ con 1
+                     := x :* y :* z :+ m :* x :+ m :* (y :+ z) :+ con 1)
+           refl x y z (- 1#) ⟩
+    x * y * z + (- 1#) * x + (- 1#) * (y + z) + 1#
+      ≈⟨ +-cong (+-cong refl (*-cong refl y+z≈1)) refl ⟩
+    x * y * z + (- 1#) * x + (- 1#) * 1# + 1#
+      ≈⟨ +-cong (+-cong (+-cong refl (-1*x≈-x x)) (-1*x≈-x 1#)) refl ⟩
+    x * y * z + (- x) + (- 1#) + 1#
+      ≈⟨ +-assoc _ _ _ ⟩
+    x * y * z + (- x) + (- 1# + 1#)
+      ≈⟨ +-cong refl (-‿inverseˡ 1#) ⟩
+    x * y * z + (- x) + 0#
+      ≈⟨ +-identityʳ _ ⟩
+    x * y * z + (- x)
+      ≈⟨ +-cong refl (sym (-1*x≈-x x)) ⟩
+    x * y * z + (- 1#) * x
+      ≈⟨ +-cong refl (*-comm (- 1#) x) ⟩
+    x * y * z + x * (- 1#)
+      ≈⟨ +-cong (*-assoc x y z) refl ⟩
+    x * (y * z) + x * (- 1#)
+      ≈⟨ sym (distribˡ x (y * z) (- 1#)) ⟩
+    x * (y * z - 1#)
+      ≈⟨ *-cong refl (sym (D-when-y+z≈1 x y+z≈1)) ⟩
+    x * D x y z
+    ∎
+    where open Solver
 
-      lem3 : (x * y - 1#) + z * (x + y - 1#) - (x + y - 1#) ≈ y * z - 1#
-      lem3 =
-        begin
-          (x * y - 1#) + z * (x + y - 1#) - (x + y - 1#)
-        ≈⟨ refl ⟩
-          (x * y + (- 1#)) + z * (x + y + (- 1#)) - (x + y + (- 1#))
-        ≈⟨ +-cong refl (sym (-1*x≈-x _)) ⟩
-          (x * y + (- 1#)) + z * (x + y + (- 1#)) + (- 1#) * (x + y + (- 1#))
-        ≈⟨ solve 4 (λ x y z m →
-                      (x :* y :+ m) :+ z :* (x :+ y :+ m) :+ m :* (x :+ y :+ m)
-                      := y :* z :+ m :+ ((x :+ m) :* (y :+ z) :+ m :* x :+ m :* m))
-             refl x y z (- 1#) ⟩
-          y * z + (- 1#) + ((x - 1#) * (y + z) + (- 1#) * x + (- 1#) * (- 1#))
-        ≈⟨ +-cong refl (+-cong (+-cong (*-cong refl y+z≈1) refl) -1*-1≈1) ⟩
-          y * z - 1# + ((x - 1#) * 1# + (- 1#) * x + 1#)
-        ≈⟨ solve 4 (λ x y z m → y :* z :+ m :+ ((x :+ m) :* con 1 :+ m :* x :+ con 1) := y :* z :+ m :+ (x :+ m :* x) :+ (con 1 :+ m)) refl x y z (- 1#) ⟩
-          y * z - 1# + (x + (- 1#) * x) + (1# - 1#)
-        ≈⟨ +-cong (+-cong refl (+-cong refl (-1*x≈-x x))) refl ⟩
-          y * z - 1# + (x - x) + (1# - 1#)
-        ≈⟨ +-cong (+-cong refl (-‿inverseʳ _)) (-‿inverseʳ _) ⟩
-          y * z - 1# + 0# + 0#
-        ≈⟨ +-identityʳ _ ⟩
-          y * z - 1# + 0#
-        ≈⟨ +-identityʳ _ ⟩
-          y * z - 1#
-        ∎
-
-      lem4 : y * z - 1# ≈ 0#
-      lem4 = trans (sym lem3) lem2
-
-      y*z≈1 : y * z ≈ 1#
-      y*z≈1 = x-y≈0⇒x≈y lem4
-
-  lemma-2 : ∀ {x y z} → (x+y#1 : x + y # 1#) → ¬ (y + z # 1#) → (x⊛y+z#1 : func x y x+y#1 + z # 1#) → func (func x y x+y#1) z x⊛y+z#1 ≈ x
-  lemma-2 {x} {y} {z} x+y#1 ¬y+z#1 x⊛y+z#1 =
+  -- 旧 lemma-2 の改名: y + z ≈ 1 のとき (x ⊛ y) ⊛ z = x （その func 部分が x）
+  [func[func]z]≈x-when-y+z≈1
+    : ∀ {x y z} → (x+y#1 : x + y # 1#) → ¬ (y + z # 1#) → (x⊛y+z#1 : func x y x+y#1 + z # 1#)
+    → func (func x y x+y#1) z x⊛y+z#1 ≈ x
+  [func[func]z]≈x-when-y+z≈1 {x} {y} {z} x+y#1 ¬y+z#1 x⊛y+z#1 =
     *-cancelʳ (func x y x+y#1 + z - 1#) (#⇒invertible x⊛y+z#1) $
-    *-cancelʳ (x + y - 1#) (#⇒invertible x+y#1) $ lem2
+    *-cancelʳ (x + y - 1#) (#⇒invertible x+y#1) $ lem
     where
-      open Solver
-
       y+z≈1 : y + z ≈ 1#
       y+z≈1 = proj₁ (tight _ _) ¬y+z#1
 
-      [x⊛y+z-1][x+y-1]≈yz-1 : (func x y x+y#1 + z - 1#) * (x + y - 1#) ≈ y * z - 1#
-      [x⊛y+z-1][x+y-1]≈yz-1 =
-        begin
-         (func x y x+y#1 + z - 1#) * (x + y - 1#)
-        ≈⟨ [x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z ⟩
-          x * y + x * z + y * z - x - y - z
-        ≈⟨ sym (+-cong (+-cong (+-cong refl (-1*x≈-x x)) (-1*x≈-x y)) (-1*x≈-x z)) ⟩
-          x * y + x * z + y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z
-        ≈⟨ solve 4 (λ x y z m → x :* y :+ x :* z :+ y :* z :+ m :* x :+ m :* y :+ m :* z := y :* z :+ m :* (y :+ z) :+ (x :* (y :+ z) :+ m :* x)) refl x y z (- 1#) ⟩
-          y * z + (- 1#) * (y + z) + (x * (y + z) + (- 1#) * x)
-        ≈⟨ +-cong (+-cong refl (*-cong refl y+z≈1)) (+-cong (*-cong refl y+z≈1) (-1*x≈-x x)) ⟩
-          y * z + (- 1#) * 1# + (x * 1# - x)
-        ≈⟨ +-cong refl (+-cong (*-identityʳ x) refl) ⟩
-          y * z + (- 1#) * 1# + (x - x)
-        ≈⟨ +-cong refl (-‿inverseʳ x) ⟩
-          y * z + (- 1#) * 1# + 0#
-        ≈⟨ +-identityʳ _ ⟩
-          y * z + (- 1#) * 1#
-        ≈⟨ +-cong refl (-1*x≈-x 1#) ⟩
-          y * z - 1#
-        ∎
-
-      lem1 : 1# + (- 1#) * (y + z) ≈ 0#
-      lem1 =
-        begin
-          1# + (- 1#) * (y + z)
-        ≈⟨ +-cong refl (*-cong refl y+z≈1) ⟩
-          1# + (- 1#) * 1#
-        ≈⟨ +-cong refl (-1*x≈-x 1#) ⟩
-          1# - 1#
-        ≈⟨ -‿inverseʳ 1# ⟩
-          0#
-        ∎
-
-      lem2 : func (func x y x+y#1) z x⊛y+z#1 * (func x y x+y#1 + z - 1#) * (x + y - 1#) ≈ x * (func x y x+y#1 + z - 1#) * (x + y - 1#)
-      lem2 =
-        begin
+      lem : func (func x y x+y#1) z x⊛y+z#1 * (func x y x+y#1 + z - 1#) * (x + y - 1#)
+            ≈ x * (func x y x+y#1 + z - 1#) * (x + y - 1#)
+      lem = begin
           func (func x y x+y#1) z x⊛y+z#1 * (func x y x+y#1 + z - 1#) * (x + y - 1#)
         ≈⟨ refl ⟩
           (func x y x+y#1 * z - 1#) * proj₁ (#⇒invertible x⊛y+z#1) * (func x y x+y#1 + z - 1#) * (x + y - 1#)
@@ -462,93 +523,36 @@ module Utils where
           (func x y x+y#1 * z - 1#) * 1# * (x + y - 1#)
         ≈⟨ *-cong (*-identityʳ _) refl ⟩
           (func x y x+y#1 * z - 1#) * (x + y - 1#)
-        ≈⟨ [[x⊛y]z-1][x+y-1#]≈xyz-x-y-z+1 x+y#1 z ⟩
-          x * y * z - x - y - z + 1#
-        ≈⟨ +-cong (+-cong (+-cong (+-cong refl (sym (-1*x≈-x x))) (sym (-1*x≈-x y))) (sym (-1*x≈-x z))) refl ⟩
-          x * y * z + (- 1#) * x + (- 1#) * y + (- 1#) * z + 1#
-        ≈⟨ solve 4 (λ x y z m → x :* y :* z :+ m :* x :+ m :* y :+ m :* z :+ con 1 := x :* (y :* z :+ m) :+ (con 1 :+ m :* (y :+ z))) refl x y z (- 1#) ⟩
-          x * (y * z - 1#) + (1# + (- 1#) * (y + z))
-        ≈⟨ +-cong refl lem1 ⟩
-          x * (y * z - 1#) + 0#
-        ≈⟨ +-identityʳ _ ⟩
-          x * (y * z - 1#)
-        ≈⟨ *-cong refl (sym [x⊛y+z-1][x+y-1]≈yz-1) ⟩
+        ≈⟨ [func*z-1][x+y-1]≈N x+y#1 z ⟩
+          N x y z
+        ≈⟨ N≈x*D-when-y+z≈1 x y+z≈1 ⟩
+          x * D x y z
+        ≈⟨ *-cong refl (sym ([func+z-1][x+y-1]≈D x+y#1 z)) ⟩
           x * ((func x y x+y#1 + z - 1#) * (x + y - 1#))
         ≈⟨ sym (*-assoc _ _ _) ⟩
           x * (func x y x+y#1 + z - 1#) * (x + y - 1#)
         ∎
 
-  lemma-3
-    : ∀ x y z → (x+y#1 : x + y # 1#)
-    → func x y x+y#1 + z ≈ 1#
-    → x * y + x * z + y * z - x - y - z ≈ 0#
-  lemma-3 x y z x+y#1 x⊛y+z≈1 =
-    begin
-      x * y + x * z + y * z - x - y - z
-    ≈⟨ sym ([x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z) ⟩
-      (func x y x+y#1 + z - 1#) * (x + y - 1#)
-    ≈⟨ *-cong (x≈y⇒x-y≈0 x⊛y+z≈1) refl ⟩
-      0# * (x + y - 1#)
-    ≈⟨ zeroˡ _ ⟩
-      0#
-    ∎
+  -- 旧 lemma-1 の改名・簡素化: y + z ≈ 1 かつ func x y + z ≈ 1 ならば、(y, z) は禁止条件 (y+z=1) ∧ (yz=1) を満たす
+  bad-pair-when-y+z≈1
+    : ∀ {x y z} → (x+y#1 : x + y # 1#) → ¬ (y + z # 1#) → ¬ (func x y x+y#1 + z # 1#)
+    → (y + z ≈ 1#) × (y * z ≈ 1#)
+  bad-pair-when-y+z≈1 {x} {y} {z} x+y#1 ¬y+z#1 ¬x⊛y+z#1 = (y+z≈1 , y*z≈1)
+    where
+      y+z≈1 : y + z ≈ 1#
+      y+z≈1 = proj₁ (tight _ _) ¬y+z#1
 
-  lemma-3'
-    : ∀ x y z → (y+z#1 : y + z # 1#)
-    → x + func y z y+z#1 ≈ 1#
-    → x * y + x * z + y * z - x - y - z ≈ 0#
-  lemma-3' x y z y+z#1 x+y⊛z≈1 =
-    begin
-      x * y + x * z + y * z - x - y - z
-    ≈⟨ sym ([x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x y+z#1) ⟩
-      (x + func y z y+z#1 - 1#) * (y + z - 1#)
-    ≈⟨ *-cong (x≈y⇒x-y≈0 x+y⊛z≈1) refl ⟩
-      0# * (y + z - 1#)
-    ≈⟨ zeroˡ _ ⟩
-      0#
-    ∎
+      x⊛y+z≈1 : func x y x+y#1 + z ≈ 1#
+      x⊛y+z≈1 = proj₁ (tight _ _) ¬x⊛y+z#1
 
-  lemma-4
-    : ∀ x y z → (x+y#1 : x + y # 1#)
-    → x * y + x * z + y * z - x - y - z ≈ 0#
-    → func x y x+y#1 + z ≈ 1#
-  lemma-4 x y z x+y#1 xy+xz+yz-x-y-z≈0 = x-y≈0⇒x≈y $
-    begin
-      func x y x+y#1 + z - 1#
-    ≈⟨ sym (*-identityʳ _) ⟩
-      (func x y x+y#1 + z - 1#) * 1#
-    ≈⟨ *-cong refl (sym (proj₂ (proj₂ (#⇒invertible x+y#1)))) ⟩
-      (func x y x+y#1 + z - 1#) * ((x + y - 1#) * proj₁ (#⇒invertible x+y#1))
-    ≈⟨ sym (*-assoc _ _ _) ⟩
-      (func x y x+y#1 + z - 1#) * (x + y - 1#) * proj₁ (#⇒invertible x+y#1)
-    ≈⟨ *-cong ([x⊛y+z-1][x+y-1]≈xy+xz+yz-x-y-z x+y#1 z) refl ⟩
-      (x * y + x * z + y * z - x - y - z) * proj₁ (#⇒invertible x+y#1)
-    ≈⟨ *-cong xy+xz+yz-x-y-z≈0 refl ⟩
-      0# * proj₁ (#⇒invertible x+y#1)
-    ≈⟨ zeroˡ _ ⟩
-      0#
-    ∎
+      D≈0 : D x y z ≈ 0#
+      D≈0 = func+z≈1⇒D≈0 x+y#1 z x⊛y+z≈1
 
-  lemma-4'
-    : ∀ x y z → (y+z#1 : y + z # 1#)
-    → x * y + x * z + y * z - x - y - z ≈ 0#
-    → x + func y z y+z#1 ≈ 1#
-  lemma-4' x y z y+z#1 xy+xz+yz-x-y-z≈0 = x-y≈0⇒x≈y $
-    begin
-      x + func y z y+z#1 - 1#
-    ≈⟨ sym (*-identityʳ _) ⟩
-      (x + func y z y+z#1 - 1#) * 1#
-    ≈⟨ *-cong refl (sym (proj₂ (proj₂ (#⇒invertible y+z#1)))) ⟩
-      (x + func y z y+z#1 - 1#) * ((y + z - 1#) * proj₁ (#⇒invertible y+z#1))
-    ≈⟨ sym (*-assoc _ _ _) ⟩
-      (x + func y z y+z#1 - 1#) * (y + z - 1#) * proj₁ (#⇒invertible y+z#1)
-    ≈⟨ *-cong ([x+y⊛z-1][y+z-1]≈xy+xz+yz-x-y-z x y+z#1) refl ⟩
-      (x * y + x * z + y * z - x - y - z) * proj₁ (#⇒invertible y+z#1)
-    ≈⟨ *-cong xy+xz+yz-x-y-z≈0 refl ⟩
-      0# * proj₁ (#⇒invertible y+z#1)
-    ≈⟨ zeroˡ _ ⟩
-      0#
-    ∎
+      yz-1≈0 : y * z - 1# ≈ 0#
+      yz-1≈0 = trans (sym (D-when-y+z≈1 x y+z≈1)) D≈0
+
+      y*z≈1 : y * z ≈ 1#
+      y*z≈1 = x-y≈0⇒x≈y yz-1≈0
 
 open Utils
 
@@ -713,30 +717,30 @@ module Main (condition : ∀ {x y} → ¬ ((x + y ≈F 1#) × (x * y ≈F 1#))) 
   ⊛-fin-assoc x y z | yes x+y#1 | yes y+z#1 | yes x⊛y+z#1 | yes x+y⊛z#1 = fin-cong (func-assoc x y z x+y#1 y+z#1 x⊛y+z#1 x+y⊛z#1)
   ⊛-fin-assoc x y z | yes x+y#1 | yes y+z#1 | yes x⊛y+z#1 | no ¬x+y⊛z#1 = ⊥-elim ((¬x⊛y+z#1 x⊛y+z#1))
     where
-      tmp : x * y + x * z + y * z - x - y - z ≈F 0#
-      tmp = lemma-3' x y z y+z#1 (proj₁ (tight _ _) (¬x+y⊛z#1))
+      D≈0 : D x y z ≈F 0#
+      D≈0 = x+func≈1⇒D≈0 x y+z#1 (proj₁ (tight _ _) (¬x+y⊛z#1))
 
       x⊛y+z≈1 : func x y x+y#1 + z ≈F 1#
-      x⊛y+z≈1 = lemma-4 x y z x+y#1 tmp
+      x⊛y+z≈1 = D≈0⇒func+z≈1 x+y#1 z D≈0
 
       ¬x⊛y+z#1 : ¬ (func x y x+y#1 + z # 1#)
       ¬x⊛y+z#1 = proj₂ (tight _ _) x⊛y+z≈1
 
   ⊛-fin-assoc x y z | yes x+y#1 | yes y+z#1 | no ¬x⊛y+z#1 | yes x+y⊛z#1 = ⊥-elim (¬x+y⊛z#1 x+y⊛z#1)
     where
-      tmp : x * y + x * z + y * z - x - y - z ≈F 0#
-      tmp = lemma-3 x y z x+y#1 (proj₁ (tight _ _) (¬x⊛y+z#1))
+      D≈0 : D x y z ≈F 0#
+      D≈0 = func+z≈1⇒D≈0 x+y#1 z (proj₁ (tight _ _) (¬x⊛y+z#1))
 
       x+y⊛z≈1 : x + func y z y+z#1 ≈F 1#
-      x+y⊛z≈1 = lemma-4' x y z y+z#1 tmp
+      x+y⊛z≈1 = D≈0⇒x+func≈1 x y+z#1 D≈0
 
       ¬x+y⊛z#1 : ¬ (x + func y z y+z#1 # 1#)
       ¬x+y⊛z#1 = proj₂ (tight _ _) x+y⊛z≈1
 
   ⊛-fin-assoc x y z | yes x+y#1 | yes y+z#1 | no ¬x⊛y+z#1 | no ¬x+y⊛z#1 = ∞≈∞
   ⊛-fin-assoc x y z | yes x+y#1 | no ¬y+z#1 with #-dec (func x y x+y#1 + z) 1#
-  ⊛-fin-assoc x y z | yes x+y#1 | no ¬y+z#1 | yes x⊛y+z#1 = fin-cong (lemma-2 x+y#1 ¬y+z#1 x⊛y+z#1)
-  ⊛-fin-assoc x y z | yes x+y#1 | no ¬y+z#1 | no ¬x⊛y+z#1 = ⊥-elim (condition (lemma-1 x+y#1 ¬y+z#1 ¬x⊛y+z#1))
+  ⊛-fin-assoc x y z | yes x+y#1 | no ¬y+z#1 | yes x⊛y+z#1 = fin-cong ([func[func]z]≈x-when-y+z≈1 x+y#1 ¬y+z#1 x⊛y+z#1)
+  ⊛-fin-assoc x y z | yes x+y#1 | no ¬y+z#1 | no ¬x⊛y+z#1 = ⊥-elim (condition (bad-pair-when-y+z≈1 x+y#1 ¬y+z#1 ¬x⊛y+z#1))
   ⊛-fin-assoc x y z | no ¬x+y#1 | yes y+z#1 with #-dec (x + func y z y+z#1) 1#
   ⊛-fin-assoc x y z | no ¬x+y#1 | yes y+z#1 | yes x+y⊛z#1 = fin-cong (F-sym lem)
     where
@@ -758,11 +762,11 @@ module Main (condition : ∀ {x y} → ¬ ((x + y ≈F 1#) × (x * y ≈F 1#))) 
       lem = begin
         func x (func y z y+z#1) x+y⊛z#1  ≈⟨ func-comm x ((func y z y+z#1)) x+y⊛z#1 y⊛z+x#1 ⟩
         func (func y z y+z#1) x y⊛z+x#1  ≈⟨ func-cong y⊛z+x#1 z⊛y+x#1 (func-comm y z y+z#1 z+y#1) refl ⟩
-        func (func z y z+y#1) x z⊛y+x#1  ≈⟨ lemma-2 z+y#1 ¬y+x#1 z⊛y+x#1 ⟩
+        func (func z y z+y#1) x z⊛y+x#1  ≈⟨ [func[func]z]≈x-when-y+z≈1 z+y#1 ¬y+x#1 z⊛y+x#1 ⟩
         z
         ∎
 
-  ⊛-fin-assoc x y z | no ¬x+y#1 | yes y+z#1 | no ¬x+y⊛z#1 = ⊥-elim (condition (lemma-1 z+y#1 ¬y+x#1 ¬z⊛y+x#1))
+  ⊛-fin-assoc x y z | no ¬x+y#1 | yes y+z#1 | no ¬x+y⊛z#1 = ⊥-elim (condition (bad-pair-when-y+z≈1 z+y#1 ¬y+x#1 ¬z⊛y+x#1))
     where
       open ≈-Reasoning F-setoid
 
