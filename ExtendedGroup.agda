@@ -8,7 +8,7 @@ x ⊛ y = ∞                        otherwise
 
 で定義される演算によって群となる。
 
-Checked with Agda version 2.7.0.1 and agda-stdlib-2.1.1
+Checked with Agda version 2.8.0 and agda-stdlib-2.3
 
 参考:
 * https://x.com/MurakamiMath/status/1837434653634187342
